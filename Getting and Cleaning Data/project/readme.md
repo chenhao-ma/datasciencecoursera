@@ -30,3 +30,4 @@
 
 ##How to produce `output.txt`
 run the R script `run_analysis.R`
+how the `run_analysis.R` generates the `output.txt` is explained by the comments in `run_analysis.R`
