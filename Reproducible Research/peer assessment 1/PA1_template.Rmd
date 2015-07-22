@@ -1,0 +1,151 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+
+## Loading and preprocessing the data
+
+Set global option
+
+```{r setOptions}
+options(scipen=1, digits=2)
+require(ggplot2)
+```
+
+Load the data. 
+
+```{r loadData}
+data <- read.csv("activity/activity.csv")
+str(data)
+```
+
+Transform the `date` attribute to `Date` type
+
+```{r transformData}
+data$date <- as.Date(data$date)
+str(data)
+```
+
+## What is mean total number of steps taken per day?
+
+Aggregate the data.frame `data` by `date` to get the total number of steps taken each day
+
+```{r aggregateDayData}
+dataPerDay <- aggregate(data$steps, by = list(data$date), FUN = sum)
+names(dataPerDay) <- c("date", "steps")
+str(dataPerDay)
+```
+
+Histogram of the total number of steps taken each day
+
+```{r histogramPlot, fig.height=4}
+ggplot(data=dataPerDay, aes(steps)) + geom_histogram()
+```
+
+Calculat the **mean** and **median** total number of steps taken per day
+
+```{r calcMean&Median}
+stepMean <- mean(dataPerDay$steps, na.rm = TRUE)
+stepMedian <- median(dataPerDay$steps, na.rm = TRUE)
+```
+
+The **mean** total number of steps taken per day is `r stepMean` and the **median** total number of steps taken per day is `r stepMedian`.
+
+## What is the average daily activity pattern?
+
+Aggregate the data.frame `data` by `interval` to get the average number of steps taken, averaged across all days
+
+```{r aggregateIntervalData}
+dataPerInterval = aggregate(data$steps, by = list(data$interval), FUN = mean,  na.rm=TRUE, na.action=NULL)
+names(dataPerInterval) <- c("interval", "steps")
+str(dataPerInterval)
+```
+
+Plot the time series plot of the data.frame `dataPerInterval`
+
+```{r timeSeriesPlot}
+ggplot(data=dataPerInterval, aes(interval, steps)) + geom_line()
+```
+
+Get the interval containing the maximum number of steps
+
+```{r getMaxInterval}
+index <- which.max(dataPerInterval$steps)
+intvl <- dataPerInterval$interval[[index]]
+```
+
+The max interval is `r intvl`.
+
+## Imputing missing values
+
+Get the total number of missing values in the dataset
+
+```{r getNullNumber}
+numNA <- sum(is.na(data))
+```
+
+The total number of missing values in the dataset is `r numNA`.
+
+We use the for that 5-minite interval to fill in all of the missing values in the dataset.
+
+Filling the data set `dataNonNa`
+```{r fillNa}
+dataNonNa <- data
+for (i in 1:length(dataNonNa$steps)){
+  if (is.na(dataNonNa$steps[i])){
+    j = i %% length(dataPerInterval$steps)
+    if (j == 0) j = length(dataPerInterval$steps)
+    dataNonNa$steps[i] <- dataPerInterval$steps[j]
+  }
+}
+str(dataNonNa)
+```
+
+Aggregate and plot the new histogram
+
+```{r aggreHist}
+dataPerDayNonNa <- aggregate(dataNonNa$steps, by = list(dataNonNa$date), FUN = sum)
+names(dataPerDayNonNa) <- c("date", "steps")
+str(dataPerDayNonNa)
+ggplot(data=dataPerDayNonNa, aes(steps)) + geom_histogram()
+```
+
+Get the **mean** and **median** total number of steps taken per day without NAs.
+```{r calcMean&MedianWithoutNAs}
+stepMeanNonNA <- mean(dataPerDayNonNa$steps, na.rm = TRUE)
+stepMedianNonNA <- median(dataPerDayNonNa$steps, na.rm = TRUE)
+```
+
+The **mean** total number of steps taken per day without NAs is `r stepMeanNonNA` and the **median** total number of steps taken per day is `r stepMedianNonNA`.
+And the previous **mean** value is `r stepMean` and previous **meadian** value is `r stepMedian`. So we can find that the **mean** value is same because we use the the mean for that 5-minute interval to fill the NAs, and because all values of some days is all NA, so after being filled these total number of is the **mean** value so the **mean** value become the **median** value too.
+
+## Are there differences in activity patterns between weekdays and weekends?
+
+So we modify the `dataNonNa` for the convinience of the pattern analysis between weekdays and weekends.
+
+```{r modifyData}
+weekdays1 <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+dataNonNa$wDay <- factor((weekdays(dataNonNa$date) %in% weekdays1), 
+         levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+str(dataNonNa)
+```
+
+Aggregate `dataNonNa` by `interval` and `wDay`
+
+```{r aggregateDataIntervalNonNa}
+dataPerIntervalNonNa <- aggregate(dataNonNa$steps, by = list(dataNonNa$interval, dataNonNa$wDay), FUN = mean)
+names(dataPerIntervalNonNa) <- c("interval", "wDay", "steps")
+str(dataPerIntervalNonNa)
+```
+
+Plot the panel plot
+
+```{r ggplotWeekendOrWeekday}
+ggplot(dataPerIntervalNonNa, aes(interval, steps)) + geom_line() + facet_grid(wDay ~ .) 
+```
+
+From the plot we can find that steps curve has one peak more higher than others on weekdays. Instead steps curve more uniform on weekends.
+
